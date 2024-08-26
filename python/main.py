@@ -14,7 +14,6 @@ from llama_index.core.agent import ReActAgent  # ReActAgent is used for creating
 from llama_index.core.query_pipeline import QueryPipeline  # Allows chaining of multiple LLM operations into a query pipeline
 from llama_index.core.output_parsers import PydanticOutputParser  # Parser for processing LLM outputs into structured data using Pydantic models
 
-from code_reader import code_reader
 from prompts import context, code_parser_template
 
 # Configure logging to capture important events and errors
@@ -67,12 +66,20 @@ class CustomSimpleDirectoryReader(SimpleDirectoryReader):
                     continue  # Skip files that cause errors
         return documents
 
+# Adding an additional resource from the Komputronik Biznes website
+def add_web_resource():
+    web_content = "Komputronik Biznes is an IT solutions integrator offering comprehensive services in consulting, hardware, software, and IT infrastructure modernization."
+    documents.append(Document(text=web_content, metadata={"source": "https://www.komputronikbiznes.pl/"}))
+
 # Setup LLM model with a specific configuration
 # Ollama is used to initialize the LLM model with a request timeout
 model = Ollama(model="llama3.1", request_timeout=30.0)
 
 # Load documents from a directory, using the custom document loader
 documents = CustomSimpleDirectoryReader("/home/nikodem-ub1/github/RAG-client/data").load_data()
+
+# Add web resource content
+add_web_resource()
 
 # Resolve the embedding model using the specified model name
 # Embedding models are used to convert text data into numerical vectors
@@ -85,7 +92,7 @@ vector_index = VectorStoreIndex.from_documents(documents, embed_model=embed_mode
 # Convert the vector index into a query engine that can interface with the LLM
 query_engine = vector_index.as_query_engine(llm=model)
 
-# Setup tools and agents
+# Setup tools
 # These tools will be used by the agent to interact with the LLM and perform specific tasks
 tools = [
     QueryEngineTool(
@@ -94,16 +101,11 @@ tools = [
             name="api_documentation",
             description="This provides documentation about a project called DEGA. Use this for reading documentation."
         ),
-    ),
-    code_reader  # A custom tool for reading and analyzing code
+    )
 ]
 
-# Setup another LLM model for code processing, specifically using CodeLlama
-code_llm = Ollama(model="codellama")
-
-# Initialize the ReActAgent using the tools and the code LLM
-# agent = ReActAgent.from_defaults(tools=tools, llm=code_llm, verbose=True, context=context)
-agent = ReActAgent.from_tools(tools, llm=code_llm, verbose=True, context=context)
+# Initialize the ReActAgent using the tools
+agent = ReActAgent.from_tools(tools, llm=model, verbose=True, context=context)
 
 # Pydantic output formatter
 # This section defines the structure of the expected output using Pydantic
