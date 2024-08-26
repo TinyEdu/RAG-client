@@ -17,7 +17,14 @@ RAG-client is a tool designed to facilitate the creation of a Retrieval-Augmente
 
 ## Usage
 
-1. **Setup**: Clone the repository and install the required dependencies using `pip install -r requirements.txt`.
+1. **Setup**
+```
+git clone 
+python3 -m venv ai
+source ai/bin/activate
+pip3 install -r requirements.txt
+curl -fsSL https://ollama.com/install.sh | sh
+```
 2. **Run the Client**: Execute the main script to start the RAG-client and interact with it via prompts.
    ```bash
    python python/main.py
