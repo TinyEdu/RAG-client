@@ -6,6 +6,7 @@ from docx import Document as DocxDocument
 from pydantic import BaseModel 
 import ast  
 import json
+import streamlit as st
 
 from llama_index.llms.ollama import Ollama  
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Document, PromptTemplate 
@@ -120,7 +121,7 @@ def handle_query(agent, output_pipeline, prompt, is_code_related):
                 result = agent.query(prompt)
                 next_result = result
 
-            print(f"Raw output (Iteration {i+1}/3): {next_result}")
+            st.write(f"Raw output (Iteration {i+1}/3): {next_result}")
 
             if is_code_related:
                 json_str = str(next_result).replace("assistant:", "").strip()
@@ -156,10 +157,15 @@ def save_output_to_file(clean_json):
         with open(filename, "w") as f:
             f.write(clean_json["code"] if clean_json["code"] else clean_json["description"])
         logging.info(f"Output saved to {filename}")
+        st.success(f"Output saved to {filename}")
     except Exception as e:
         logging.error(f"Error saving output to file: {e}")
+        st.error(f"Error saving output to file: {e}")
 
 def main():
+    st.title("LLM-based Document Query Tool")
+    st.write("Interact with the LLM-based tool by entering your query below.")
+    
     llm_model = setup_llm_model()
 
     # Load documents from a directory
@@ -179,23 +185,25 @@ def main():
 
     output_pipeline = setup_output_pipeline(json_prompt_tmpl, llm_model)
 
-    while (prompt := input("Enter a prompt (q to quit) -> ")) != "q":
-        start_time = time.time()
+    prompt = st.text_input("Enter your prompt:")
+    if st.button("Submit"):
+        if prompt:
+            start_time = time.time()
 
-        # Check if the prompt is likely asking for code generation
-        is_code_related = any(keyword in prompt.lower() for keyword in ["code", "script", "function", "class", "method"])
+            # Check if the prompt is likely asking for code generation
+            is_code_related = any(keyword in prompt.lower() for keyword in ["code", "script", "function", "class", "method"])
 
-        clean_json = handle_query(agent, output_pipeline, prompt, is_code_related)
+            clean_json = handle_query(agent, output_pipeline, prompt, is_code_related)
 
-        if clean_json:
-            print("Final Output:")
-            print(clean_json["code"] if clean_json["code"] else clean_json["description"])
-            print("\n\nDescription:", clean_json["description"])
+            if clean_json:
+                st.write("Final Output:")
+                st.write(clean_json["code"] if clean_json["code"] else clean_json["description"])
+                st.write("Description:", clean_json["description"])
 
-            save_output_to_file(clean_json)
+                save_output_to_file(clean_json)
 
-        end_time = time.time()
-        logging.info(f"Time taken: {end_time - start_time} seconds")
+            end_time = time.time()
+            st.write(f"Time taken: {end_time - start_time} seconds")
 
 # Entry point of the script
 if __name__ == "__main__":

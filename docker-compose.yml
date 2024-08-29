@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  llama:
+    image: huggingface/transformers-pytorch-gpu:latest # Use a suitable image with CUDA support if needed
+    container_name: llama-3.1-8b
+    ports:
+      - "111:80" # Map port 111 on the host to port 80 in the container
+      - "112:11434"
+    volumes:
+      - ./models:/models # Mount the models directory
+    environment:
+      - MODEL_NAME=llama-3.1-8b # Specify the model name
+    command: >
+      python3 -m transformers.serve --model_name_or_path /models/llama-3.1-8b --port 80 --host 0.0.0.0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ] # If using GPU support
+    restart: unless-stopped
+
+volumes:
+  models:
+    external: true # Assuming you have a directory with models available locally
