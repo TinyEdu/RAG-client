@@ -1,4 +1,4 @@
-
+#!/bin/bash
 
 
 # setup docker image
