@@ -22,6 +22,7 @@ from llama_index.core.tools import FunctionTool
 import os
 
 
+
 def code_reader_func(file_name):
     path = os.path.join("/home/nikodem-ub1/github/VtC-compiler", file_name)
     try:
@@ -96,7 +97,7 @@ def add_web_resource(documents):
 
 def setup_llm_model():
     """Setup LLM model with a specific configuration."""
-    return Ollama(model="llama3.1", request_timeout=30.0)
+    return Ollama(model="llama3.1", request_timeout=30.0, base_url="http://localhost:111")
 
 def setup_vector_index(documents, embed_model):
     """Create a vector index from the loaded documents."""
