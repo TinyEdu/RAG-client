@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  chromadb:
+    image: chromadb/chroma
+    container_name: chromadb
+    ports:
+      - "7100:8000"
+    environment:
+      CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER: "chromadb.auth.token.TokenConfigServerAuthCredentialsProvider"
+      CHROMA_SERVER_AUTH_PROVIDER: "chromadb.auth.token.TokenAuthServerProvider"
+      CHROMA_SERVER_AUTH_CREDENTIALS: "${CHROMA_SERVER_AUTH_CREDENTIALS}"
+      CHROMA_SERVER_AUTH_TOKEN_TRANSPORT_HEADER: "XCHROMA_TOKEN"
+    volumes:
+      - ./volumes/chroma:/chroma/chroma
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "7101:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ]
+    volumes:
+      - /usr/share/ollama/.ollama:/root/.ollama
