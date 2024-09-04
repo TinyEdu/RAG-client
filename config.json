@@ -1,24 +1,25 @@
 {
-  "models" : {
-    llm : "llama3.1",
-    embedder : "BAAI/bge-base-en-v1.5",
-    sentenceTransformer : "all-MiniLM-L6-v2"
+  "models": {
+    "llm": "llama3.1",
+    "embedder": "BAAI/bge-base-en-v1.5",
+    "sentenceTransformer": "all-MiniLM-L6-v2"
   },
-
   "chromadb": {
-    "host" : "localhost",
-    "port" : "7100"
+    "host": "localhost",
+    "port": "7100"
   },
-  
   "ollama": {
-    "host" : "localhost",
-    "port" : "7101"
+    "host": "localhost",
+    "port": "7101"
   },
-
   "collections": {
     "compiler_writing_books": "Books about compiler construction across various languages, covering topics like lexical analysis, parsing, optimization, and code generation.",
     "study_notes": "Personal notes from your studies, capturing key concepts and insights across multiple academic subjects.",
-    "cpp_documentation": "Comprehensive C++ language documentation, including syntax, standard libraries, and best practices for efficient reference.",
+    "cpp_documentation": "Comprehensive C++ language documentation, including syntax, standard libraries, and books with best practices for efficient reference.",
     "project_articles": "Articles and references used in your project development, covering software development and technical research topics."
+  },
+  "prompts": {
+    "main_context": "User asks about things related to computer science, in particular programming, compilers and artificial intelligence.",
+    "rag_template": "Use the following context to answer the user's query. If you cannot answer, please respond with 'I don't know'. \n User's Query: {query} \n Context: {context}"
   }
 }

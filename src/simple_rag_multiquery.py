@@ -1,20 +1,57 @@
-import chromadb
+from chromadb import HttpClient
+from chromadb.config import Settings  # Import Settings class
 from chromadb.utils import embedding_functions
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 
 from chat import chat
 
-db = chromadb.HttpClient(host="localhost", port=7100)
-embed_model = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+from llama_index.llms.ollama import Ollama  
+from langchain.retrievers.multi_query import MultiQueryRetriever
 
-# Function to embed the query using the same embedding model
-def embed_query(query):
-    return embed_model.embed_documents([query])[0] 
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 
-# Function to retrieve relevant documents from ChromaDB using the embedding
+from langchain.chains import RetrievalQA
+from langchain_core.embeddings import Embeddings
+from langchain_chroma import Chroma
+
+# Initialize ChromaDB client
+db = HttpClient(host="localhost", port=7100)
+
+# Set up the embedder
+embedder = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+
+from langchain_ollama import OllamaLLM
+
+# Set up the LLM
+llm = OllamaLLM(model="llama3.1", request_timeout=30.0, base_url="http://localhost:7101")
+
+# Use the Settings class to configure client settings for Chroma
+client_settings = Settings(
+    chroma_server_host="localhost", 
+    chroma_server_http_port="7100"
+)
+
+# Initialize Chroma vector store with the proper client settings
+vectorstore = Chroma(
+    collection_name="pdf_chunks", 
+    embedding_function=embedder, 
+    client_settings=client_settings  # Use Settings instance instead of a dictionary
+)
+
+# Initialize the retriever from the vector store
+db_retriever = vectorstore.as_retriever()
+
+# Define function to retrieve documents
 def retrieve_docs(query, collection_name="pdf_chunks", k=5):
-    query_embedding = embed_query(query)
+    retriever = MultiQueryRetriever.from_llm(
+        retriever=db_retriever, llm=llm
+    )
+
+    docs = retriever.get_relevant_documents(query=query)
+
+    query_embedding = embedder.embed_documents([query])[0]
     collection = db.get_collection(collection_name)
 
     # Query the vector database to get the top-k most similar chunks
