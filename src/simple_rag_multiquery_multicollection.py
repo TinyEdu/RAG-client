@@ -1,97 +1,131 @@
 import json
-import requests
+import os
 
-import chromadb
+import logging
+import numpy as np
+
+from chromadb import HttpClient
+from chromadb.config import Settings  # Import Settings class
 from chromadb.utils import embedding_functions
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 
+from chat import chat
+
+from llama_index.llms.ollama import Ollama  
+from langchain.retrievers.multi_query import MultiQueryRetriever
+
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+
+from langchain.chains import RetrievalQA
+from langchain_core.embeddings import Embeddings
+from langchain_chroma import Chroma
+
+config_path = os.path.join(os.path.dirname(__file__), '../config.json')
+
+# Load the JSON data from the file
+with open(config_path, 'r') as config_file:
+    config_data = json.load(config_file)
+
+# Access the collections map
+global collections 
+collections = config_data.get('collections', {})
+
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Initialize ChromaDB client
-db = chromadb.HttpClient(host="localhost", port=7100)
+logging.info("Initializing ChromaDB client")
+db = HttpClient(host="localhost", port=7100)
 
-# Embedding model setup (BAAI/bge-base-en-v1.5)
-embed_model = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+# Set up the embedder
+logging.info("Setting up FastEmbedEmbeddings")
+embedder = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
 
-# Function to embed the query using the same embedding model
-def embed_query(query):
-    return embed_model.embed_documents([query])[0]  # Return the single embedding
+from langchain_ollama import OllamaLLM
 
-# Function to retrieve relevant documents from multiple collections in ChromaDB using the embedding
-def retrieve_docs_multi_collection(query, collection_names=["pdf_chunks", "other_collection"], k=5):
-    # Embed the query using the embedding model
-    query_embedding = embed_query(query)
+# Set up the LLM
+logging.info("Setting up the Ollama LLM")
+llm = OllamaLLM(model="llama3.1", request_timeout=30.0, base_url="http://localhost:7101")
 
-    all_retrieved_docs = []
+# Use the Settings class to configure client settings for Chroma
+logging.info("Configuring Chroma client settings")
+client_settings = Settings(
+    chroma_server_host="localhost", 
+    chroma_server_http_port="7100"
+)
 
-    # Iterate over each collection
-    for collection_name in collection_names:
-        try:
-            # Get the collection where the embeddings are stored
-            collection = db.get_collection(collection_name)
+# Assuming collections is a list of collection objects, and each has a 'description' or 'metadata'
+def select_collection_semantically(query):
+    # Embed the query
+    query_embedding = embedder.embed_documents([query])[0]
+    
+    best_collection = None
+    highest_similarity = 0
 
-            # Query the vector database to get the top-k most similar chunks
-            results = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=k
-            )
+    for collection_name, collection_description in collections.items(): 
+        collection_embedding = embedder.embed_documents([collection_description])[0]
+        
+        # Calculate cosine similarity
+        similarity = np.dot(query_embedding, collection_embedding) / (np.linalg.norm(query_embedding) * np.linalg.norm(collection_embedding))
+        
+        if similarity > highest_similarity:
+            highest_similarity = similarity
+            best_collection = collection_name
+    
+    return best_collection
 
-            # Print the structure of the results for debugging
-            print(f"Results structure for collection '{collection_name}':", results)
 
-            # ChromaDB returns a list of results. Let's extract the documents properly.
-            retrieved_docs = results["documents"]
-
-            # Since it's a list of lists, flatten the list to get all retrieved documents
-            retrieved_docs = [doc for sublist in retrieved_docs for doc in sublist]
-
-            # Append the retrieved documents to the overall list
-            all_retrieved_docs.extend(retrieved_docs)
-
-        except Exception as e:
-            print(f"Error querying collection '{collection_name}': {e}")
-            continue
-
-    return all_retrieved_docs
-
-def chat(messages):
-    r = requests.post(
-        "http://0.0.0.0:7101/api/chat",
-        json={"model": "llama3.1", "messages": messages, "stream": True},
-        stream=True
+# Define function to retrieve documents
+def retrieve_docs(query, collection_name="pdf_chunks", k=5):
+    # Initialize Chroma vector store with the proper client settings
+    logging.info("Initializing Chroma vector store")
+    vectorstore = Chroma(
+        collection_name=collection_name, 
+        embedding_function=embedder, 
+        client_settings=client_settings 
     )
-    r.raise_for_status()
-    output = ""
 
-    for line in r.iter_lines():
-        body = json.loads(line)
-        if "error" in body:
-            raise Exception(body["error"])
-        if body.get("done") is False:
-            message = body.get("message", "")
-            content = message.get("content", "")
-            output += content
-            # the response streams one token at a time, print that as we receive it
-            print(content, end="", flush=True)
+    # Initialize the retriever from the vector store
+    logging.info("Setting up document retriever from vector store")
+    db_retriever = vectorstore.as_retriever()
+    
+    logging.info(f"Retrieving documents for query: {query}")
+    retriever = MultiQueryRetriever.from_llm(
+        retriever=db_retriever, llm=llm
+    )
 
-        if body.get("done", False):
-            message["content"] = output
-            return message
+    docs = retriever.get_relevant_documents(query=query)
+
+    query_embedding = embedder.embed_documents([query])[0]
+    collection = db.get_collection(collection_name)
+
+    # Query the vector database to get the top-k most similar chunks
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=k
+    )
+
+    # ChromaDB returns a list of results. Let's extract the documents properly.
+    retrieved_docs = results["documents"]
+    # flatten the list 
+    retrieved_docs = [doc for sublist in retrieved_docs for doc in sublist]
+
+    logging.info(f"Retrieved {len(retrieved_docs)} documents")
+    return retrieved_docs
 
 # Function to generate an answer using the retrieved context and Ollama LLM
 def generate_answer_with_context(query, context):
+    logging.info(f"Generating answer with retrieved context for query: {query}")
     # Combine the retrieved context into a single string
     context_str = "\n\n".join(context)
     
     # Define a prompt template for the LLM
-    rag_template = """\
-Use the following context to answer the user's query. If you cannot answer, please respond with 'I don't know'.
-
-User's Query:
-{query}
-
-Context:
-{context}
-"""
+    rag_template = """Use the following context to answer the user's query. If you cannot answer, please respond with 'I don't know'.
+                      User's Query: {query}
+                      Context: {context}"""
     
     # Create the final prompt
     prompt = rag_template.format(query=query, context=context_str)
@@ -99,24 +133,27 @@ Context:
     messages = [
         {"role": "user", "content": prompt}
     ]
-    # Assuming the correct method is `generate` or `ask`
-    response = chat(messages)
-    return response
+    
+    return chat(messages) # @TODO: change it --> ollamaLLM
 
-# RAG pipeline function: retrieve context from multiple collections and generate an answer
-def rag_pipeline(query, collection_names=["pdf_chunks", "other_collection"], k=5):
-    # Step 1: Retrieve relevant documents from multiple collections in ChromaDB
-    retrieved_docs = retrieve_docs_multi_collection(query, collection_names, k)
+# RAG pipeline function: retrieve context and generate an answer
+def rag_pipeline(query, k=5):
+    logging.info(f"Starting RAG pipeline for query: {query}")
+
+    # Step 0: Select the most semantically relevant collection
+    collection_name = select_collection_semantically(query)
+
+    # Step 1: Retrieve relevant documents from ChromaDB
+    retrieved_docs = retrieve_docs(query, collection_name, k)
     
     # Step 2: Generate an answer using the retrieved context and the LLM
     answer = generate_answer_with_context(query, retrieved_docs)
     
+    logging.info(f"Generated answer for query: {query}")
     return answer
 
-# Example query
-query = "Explain how does a parser work"
-
-# Run the RAG pipeline, querying multiple collections
-collection_names = ["pdf_chunks", "other_collection"]  # Add more collection names as needed
-response = rag_pipeline(query, collection_names)
-print("Response:", response)
+# _________________________________________
+# EXAMPLE
+if __name__ == "__main__":
+    logging.info("Running example query")
+    print("\n\nResponse:", rag_pipeline("Explain how does a parser work"))
