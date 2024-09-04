@@ -1,3 +1,4 @@
+import logging
 from chromadb import HttpClient
 from chromadb.config import Settings  # Import Settings class
 from chromadb.utils import embedding_functions
@@ -16,24 +17,32 @@ from langchain.chains import RetrievalQA
 from langchain_core.embeddings import Embeddings
 from langchain_chroma import Chroma
 
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Initialize ChromaDB client
+logging.info("Initializing ChromaDB client")
 db = HttpClient(host="localhost", port=7100)
 
 # Set up the embedder
+logging.info("Setting up FastEmbedEmbeddings")
 embedder = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
 
 from langchain_ollama import OllamaLLM
 
 # Set up the LLM
+logging.info("Setting up the Ollama LLM")
 llm = OllamaLLM(model="llama3.1", request_timeout=30.0, base_url="http://localhost:7101")
 
 # Use the Settings class to configure client settings for Chroma
+logging.info("Configuring Chroma client settings")
 client_settings = Settings(
     chroma_server_host="localhost", 
     chroma_server_http_port="7100"
 )
 
 # Initialize Chroma vector store with the proper client settings
+logging.info("Initializing Chroma vector store")
 vectorstore = Chroma(
     collection_name="pdf_chunks", 
     embedding_function=embedder, 
@@ -41,10 +50,12 @@ vectorstore = Chroma(
 )
 
 # Initialize the retriever from the vector store
+logging.info("Setting up document retriever from vector store")
 db_retriever = vectorstore.as_retriever()
 
 # Define function to retrieve documents
 def retrieve_docs(query, collection_name="pdf_chunks", k=5):
+    logging.info(f"Retrieving documents for query: {query}")
     retriever = MultiQueryRetriever.from_llm(
         retriever=db_retriever, llm=llm
     )
@@ -62,14 +73,14 @@ def retrieve_docs(query, collection_name="pdf_chunks", k=5):
 
     # ChromaDB returns a list of results. Let's extract the documents properly.
     retrieved_docs = results["documents"]
-
-    # Since it's a list of lists, flatten the list to get all retrieved documents
     retrieved_docs = [doc for sublist in retrieved_docs for doc in sublist]
 
+    logging.info(f"Retrieved {len(retrieved_docs)} documents")
     return retrieved_docs
 
 # Function to generate an answer using the retrieved context and Ollama LLM
 def generate_answer_with_context(query, context):
+    logging.info(f"Generating answer with retrieved context for query: {query}")
     # Combine the retrieved context into a single string
     context_str = "\n\n".join(context)
     
@@ -89,14 +100,18 @@ def generate_answer_with_context(query, context):
 
 # RAG pipeline function: retrieve context and generate an answer
 def rag_pipeline(query, collection_name="pdf_chunks", k=5):
+    logging.info(f"Starting RAG pipeline for query: {query}")
     # Step 1: Retrieve relevant documents from ChromaDB
     retrieved_docs = retrieve_docs(query, collection_name, k)
     
     # Step 2: Generate an answer using the retrieved context and the LLM
     answer = generate_answer_with_context(query, retrieved_docs)
     
+    logging.info(f"Generated answer for query: {query}")
     return answer
 
 # _________________________________________
 # EXAMPLE
-print("\n\nResponse:", rag_pipeline("Explain how does a parser work"))
+if __name__ == "__main__":
+    logging.info("Running example query")
+    print("\n\nResponse:", rag_pipeline("Explain how does a parser work"))
