@@ -1,7 +1,5 @@
+# utils.py
 import os
-import fitz  
-import tqdm
-
 import requests
 from bs4 import BeautifulSoup
 
@@ -16,8 +14,10 @@ def get_all_files_with_types(types, directory):
         # Loop through each file in the current directory
         for filename in filenames:
             # Check if the file ends with one of the specified types, append if it does
-            if filename.lower().endswith(tuple(types)):
-                files.append(os.path.join(root, filename))
+            for type in types:
+                if filename.lower().endswith(type):
+                    files.append(os.path.join(root, filename))
+                    break
 
     return files
 

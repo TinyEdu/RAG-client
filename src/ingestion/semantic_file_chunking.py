@@ -1,7 +1,11 @@
+# semantic_file_chunking.py
 import os
-import fitz  
-import tqdm
+import fitz
+import git
+
+from tqdm.auto import tqdm
 from langchain_experimental.text_splitter import SemanticChunker
+from utils import fetch_website_content
 
 
 def semantic_chunking(text, embed_model):
@@ -10,37 +14,72 @@ def semantic_chunking(text, embed_model):
 
     return semantic_chunks
 
-
+# Function to process different file types
 def process_file(filepath, collection, embed_model):
-    doc = fitz.open(filepath)
-    
-    # Loop through each page
-    for page_number in tqdm(range(len(doc)), desc=f"Processing {os.path.basename(filepath)}"):
-        page = doc.load_page(page_number)
-        text = page.get_text("text")
-        
-        chunks = semantic_chunking(text, embed_model)
-        
-        # Loop through each chunk and generate embeddings
-        for i, chunk in tqdm(enumerate(chunks), total=len(chunks), desc=f"Page {page_number}", leave=False):
-            # Extract the actual text content from the Document object
-            chunk_text = chunk.page_content  
+    _, file_extension = os.path.splitext(filepath)
 
-            # Embed the text content of the chunk
-            embedding = embed_model.embed_documents([chunk_text])  # Ensure it's passed as a list
-            
-            collection.add(
-                ids=[f"{os.path.basename(filepath)}_page_{page_number}_chunk_{i}"],
-                embeddings=embedding,  
-                documents=[chunk_text],
-                metadatas=[{
-                    "filename": os.path.basename(filepath), 
-                    "page_number": page_number, 
-                    "chunk_index": i
-                }]
-            )
+    # Handle PDF files
+    if file_extension.lower() == '.pdf':
+        doc = fitz.open(filepath)
+        for page_number in tqdm(range(len(doc)), desc=f"Processing {os.path.basename(filepath)}"):
+            page = doc.load_page(page_number)
+            text = page.get_text("text")
+            chunks = semantic_chunking(text, embed_model)
 
-from utils import fetch_website_content
+            for i, chunk in tqdm(enumerate(chunks), total=len(chunks), desc=f"Page {page_number}", leave=False):
+                chunk_text = chunk.page_content
+                embedding = embed_model.embed_documents([chunk_text])
+
+                collection.add(
+                    ids=[f"{os.path.basename(filepath)}_page_{page_number}_chunk_{i}"],
+                    embeddings=embedding,
+                    documents=[chunk_text],
+                    metadatas=[{
+                        "filename": os.path.basename(filepath),
+                        "page_number": page_number,
+                        "chunk_index": i
+                    }]
+                )
+    # Handle text-based files (.cpp, .c, .h, .hpp, .sh, .txt, .md)
+    elif file_extension.lower() in ['.cpp', '.c', '.h', '.hpp', '.sh', '.txt', '.md']:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            text = f.read()
+            chunks = semantic_chunking(text, embed_model)
+
+            for i, chunk in tqdm(enumerate(chunks), total=len(chunks), desc=f"Processing {os.path.basename(filepath)}", leave=False):
+                chunk_text = chunk.page_content
+                embedding = embed_model.embed_documents([chunk_text])
+
+                collection.add(
+                    ids=[f"{os.path.basename(filepath)}_chunk_{i}"],
+                    embeddings=embedding,
+                    documents=[chunk_text],
+                    metadatas=[{
+                        "filename": os.path.basename(filepath),
+                        "chunk_index": i
+                    }]
+                )
+    # Handle HTML files
+    elif file_extension.lower() == '.html':
+        with open(filepath, 'r', encoding='utf-8') as f:
+            text = f.read()
+            chunks = semantic_chunking(text, embed_model)
+
+            for i, chunk in tqdm(enumerate(chunks), total=len(chunks), desc=f"Processing {os.path.basename(filepath)}", leave=False):
+                chunk_text = chunk.page_content
+                embedding = embed_model.embed_documents([chunk_text])
+
+                collection.add(
+                    ids=[f"{os.path.basename(filepath)}_chunk_{i}"],
+                    embeddings=embedding,
+                    documents=[chunk_text],
+                    metadatas=[{
+                        "filename": os.path.basename(filepath),
+                        "chunk_index": i
+                    }]
+                )
+    else:
+        print(f"Unsupported file type: {file_extension}")
 
 def process_website(url, collection, embed_model):
     content = fetch_website_content(url)
@@ -63,7 +102,6 @@ def process_website(url, collection, embed_model):
             }]
         )
 
-import git 
 
 def process_repository(repo_url, clone_dir, extensions):
     try:

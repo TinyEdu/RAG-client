@@ -1,3 +1,5 @@
+# ingest.py
+
 import json
 
 import chromadb
@@ -42,12 +44,14 @@ def add_websites_to_collection(urls, collection_name, embed_model):
 
 
 def process_collection(collection_name, embed_model, directory_path):
+    print(f"Processing collection: {directory_path}")
     extensions = ['.pdf', '.cpp', '.c', '.h', '.hpp', '.sh', 'html', '.txt', '.md']
 
     files = get_all_files_with_types(extensions, directory_path)
     collection = db.get_or_create_collection(collection_name)
 
     for file in files:
+        print(f"Processing file: {file}")
         process_file(file, collection, embed_model)
 
 
@@ -59,9 +63,10 @@ if __name__ == "__main__":
         print()
 
         if config["data_path"][collection_name] == "":
-            process_collection(collection_name, embed_model, config["data_path"][collection_name])
+            print("Skipping collection as no data path is provided.")
+            continue
 
-        process_repository("https://github.com/TinyEdu/VtC-compiler", "codebase", ['.cpp', '.c', '.h', '.hpp', '.sh'])
+        process_collection(collection_name, embed_model, str(config["data_path"][collection_name]))
 
     print("Semantic chunking and embedding process completed.")
 
