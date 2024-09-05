@@ -1,7 +1,7 @@
 {
   "models": {
     "llm": "llama3.1",
-    "embedder": "BAAI/bge-base-en-v1.5",
+    "embeddings": "BAAI/bge-base-en-v1.5",
     "sentenceTransformer": "all-MiniLM-L6-v2"
   },
   "chromadb": {
@@ -15,8 +15,18 @@
   "collections": {
     "compiler_writing_books": "Books about compiler construction across various languages, covering topics like lexical analysis, parsing, optimization, and code generation.",
     "study_notes": "Personal notes from your studies, capturing key concepts and insights across multiple academic subjects.",
+    "cpp_books": "Books about C++ programming, including best practices, design patterns, and advanced topics.",
     "cpp_documentation": "Comprehensive C++ language documentation, including syntax, standard libraries, and books with best practices for efficient reference.",
-    "project_articles": "Articles and references used in your project development, covering software development and technical research topics."
+    "project_articles": "Articles and references used in your project development, covering software development and technical research topics.",
+    "codebase": "A collection of repositories and projects I have worked on."
+  },
+  "data_path": {
+    "compiler_writing_books": "/home/nikodem-ub1/github/RAG-client/data/compiler_writing_books",
+    "study_notes": "data/study_notes.json/home/nikodem-ub1/github/RAG-client/data/study_notes",
+    "cpp_books": "/home/nikodem-ub1/github/RAG-client/data/cpp_books",
+    "cpp_documentation": "/home/nikodem-ub1/github/RAG-client/data/cpp_documentation",
+    "project_articles": "",
+    "codebase": "/home/nikodem-ub1/github/RAG-client/data/codebase"
   },
   "prompts": {
     "main_context": "User asks about things related to computer science, in particular programming, compilers and artificial intelligence.",
