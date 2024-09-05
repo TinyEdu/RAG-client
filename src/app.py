@@ -30,3 +30,7 @@ if st.session_state.messages[-1]["role"] != "assistant":
             st.write(response)
             message = {"role": "assistant", "content": response}
             st.session_state.messages.append(message) 
+
+
+
+# https://medium.com/@gayani.parameswaran/building-a-multi-llm-chatbot-with-langchain-openai-and-ollama-e4836b5160f7

@@ -5,7 +5,7 @@ models/*
 data/*
 ai/*
 volumes/*
-
+/volumes/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

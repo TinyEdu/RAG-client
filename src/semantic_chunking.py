@@ -72,7 +72,7 @@ def process_pdf(pdf_path, collection):
 # Function to process all PDFs in the specified directory
 def process_all_pdfs(pdf_directory):
     # Create or get the collection in ChromaDB
-    collection = db.get_or_create_collection("pdf_chunks")
+    collection = db.get_or_create_collection("compiler_writing_books")
     
     # Loop through all PDF files in the specified directory
     for pdf_file in tqdm(os.listdir(pdf_directory), desc="Processing PDFs"):
