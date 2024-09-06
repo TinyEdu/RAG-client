@@ -17,6 +17,7 @@
     "study_notes": "Personal notes from your studies, capturing key concepts and insights across multiple academic subjects.",
     "cpp_books": "Books about C++ programming, including best practices, design patterns, and advanced topics.",
     "cpp_documentation": "Comprehensive C++ language documentation, including syntax, standard libraries, and books with best practices for efficient reference.",
+    "project_articles": "Articles and references used in your project development, covering software development and technical research topics.",
     "codebase": "A collection of repositories and projects I have worked on."
   },
   "data_path": {

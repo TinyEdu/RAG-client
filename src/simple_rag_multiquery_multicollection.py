@@ -22,6 +22,8 @@ from langchain.chains import RetrievalQA
 from langchain_core.embeddings import Embeddings
 from langchain_chroma import Chroma
 
+COLLECTION_THRESHOLD = 0.5
+
 config_path = os.path.join(os.path.dirname(__file__), '../config.json')
 
 # Load the JSON data from the file
@@ -74,6 +76,11 @@ def select_collection_semantically(query):
         if similarity > highest_similarity:
             highest_similarity = similarity
             best_collection = collection_name
+
+    
+    # check if the similarity is high enough to be considered
+    if similarity > COLLECTION_THRESHOLD:
+        return  None
     
     return best_collection
 
