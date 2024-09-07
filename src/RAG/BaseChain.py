@@ -11,7 +11,7 @@ from langchain_ollama import OllamaLLM
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain_chroma import Chroma
 
-COLLECTION_THRESHOLD = 0.9
+COLLECTION_THRESHOLD = 0
 
 
 class RAGPipeline:
@@ -163,7 +163,5 @@ class RAGPipeline:
 if __name__ == "__main__":
     config_path = os.path.join(os.path.dirname(__file__), "/home/nikodem-ub1/github/RAG-client/config.json")
     pipeline = RAGPipeline(config_path)
-    print("--- --- --- Response --- --- ---\n", pipeline.run("Hey, how do I install Python on Windows?"))
-    print("--- --- --- Response --- --- ---\n", pipeline.run("What is the capital of France?"))
-    print("--- --- --- Response --- --- ---\n", pipeline.run("What types of lexers do we have?"))
-    print("--- --- --- Response --- --- ---\n", pipeline.run("Write an example of how to use ranges in c++"))
+    print("--- --- --- Response --- --- ---\n", pipeline.run("write me an example visitor pattern class in c++"))
+

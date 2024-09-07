@@ -42,7 +42,7 @@ def search_collection(collection_name, query, embed_model, top_k=5):
 if __name__ == "__main__":
     # Specify which collection you want to query and the search query
     collection_name = "compiler_writing_books"  # Replace with the name of the collection you want to search
-    query = "how can I write down my syntax tree"  # Replace with your search query
+    query = "write me an example visitor pattern class in c++"  # Replace with your search query
     
     # Perform the search and retrieve the top results
     results = search_collection(collection_name, query, embed_model)
